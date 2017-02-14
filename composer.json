@@ -1,0 +1,17 @@
+{
+    "name": "diegocosta/wp-category-color",
+    "type": "wpackagist-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Diego Costa",
+            "email": "diego@diegocosta.com.br"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "DiegoCosta\\WP\\": "src/"
+        }
+    }
+}

@@ -4,13 +4,14 @@
     class CategoryColor
     {
         public static $instance = null;
+        public static $categoryOptionKey;
 
-        public static $categoryColorPrefix = "dc_cat_color";
-
-        public static function getInstance()
+        public static function init($category_option)
         {
-            if(self::$instance == null)
+            if(self::$instance == null){
+                self::$categoryOptionKey = $category_option;
                 self::$instance = new self;
+            }
 
             return self::$instance;
         }
@@ -34,13 +35,44 @@
     		});
 
     		// Initialize Color Picker
-    		add_action('admin_print_footer_scripts', array($this, 'renderAssets'));
+    		add_action('admin_print_footer_scripts', function() {
+                echo '<script> jQuery(".dc_cat_color").wpColorPicker(); </script>';
+                echo '<style> .dc_category_color_preview { width: 20px; height: 20px; float:left; margin-right: 10px; } </style>';
+            });
 
             // Add the column color in category list
-            add_filter('manage_edit-category_columns', array($this, 'addCategoryColorColumn'));
+            add_filter('manage_edit-category_columns', function($columns) {
+                $columns[self::$categoryOptionKey . '_column'] = 'Color';
+                return $columns;
+            });
 
-            add_filter ('manage_category_custom_column', array($this, 'addCategoryColorColumnData'), 10,3);
+            // Show current category color in category list
+            add_filter ('manage_category_custom_column', function($content, $column_name, $term_id) {
 
+                if($column_name == self::$categoryOptionKey . '_column') {
+
+                    $categoryColor = self::getColor($term_id);
+
+                    if(!$categoryColor){
+                        return $content;
+                    }
+
+                    return '<div class="dc_category_color_preview" style="background:'. $categoryColor .'"></div>' . $categoryColor;
+                }
+
+            }, 10,3);
+
+            // Modify WP_Term Object to shows category color
+            add_filter('get_term', function($term){
+                $term->color = self::getColor($term->term_id);
+                return $term;
+            }, 10, 4);
+
+        }
+
+        private function id($term_id)
+        {
+            return self::categoryOptionKey . '_' . $term_id;
         }
 
         public function save($term_id)
@@ -48,13 +80,14 @@
     		if ( !isset( $_POST['term_meta'] ) )
     			return false;
 
-    	    $name = sprintf('%s_%s', self::$categoryColorPrefix, $term_id);
+    	    $name = $this->id($term_id);
     	    $term_meta = get_option( $name );
-    	    $cat_keys = array_keys( $_POST['term_meta'] );
 
-    	    foreach ( $cat_keys as $key )
-    	    	if ( isset ( $_POST['term_meta'][$key] ) )
-    	    		$term_meta[$key] = $_POST['term_meta'][$key];
+    	    foreach ( array_keys( $_POST['term_meta'] ) as $key ) {
+                if ( isset ( $_POST['term_meta'][$key] ) ){
+                    $term_meta[$key] = $_POST['term_meta'][$key];
+                }
+            }
 
     	    // Save the option array.
     	    update_option( $name, $term_meta );
@@ -65,7 +98,7 @@
     		$term_value = '';
 
     		if( is_object($term) && $term->term_id ) {
-    			$term_meta = get_option( sprintf("%s_%s", self::$categoryColorPrefix, $term->term_id) );
+    			$term_meta = $this->id($term->term_id);
     			$term_value = esc_attr( $term_meta['cat_color'] ) ? esc_attr( $term_meta['cat_color'] ) : '';
     		}
 
@@ -79,38 +112,10 @@
     			</tr>';
     	}
 
-        public function addCategoryColorColumn($columns)
-        {
-            $columns[self::$categoryColorPrefix . '_column'] = 'Color';
-
-            return $columns;
-        }
-
-        public function addCategoryColorColumnData($content, $column_name, $term_id)
-        {
-            if($column_name == self::$categoryColorPrefix . '_column') {
-
-                $categoryColor = self::getColor($term_id);
-
-                if(!$categoryColor){
-                    return $content;
-                }
-
-                $content = '<div class="dc_category_color_preview" style="background:'. $categoryColor .'"></div>' . $categoryColor;
-
-                return $content;
-            }
-        }
-
-        public function renderAssets()
-        {
-            echo "<script> jQuery(function(){ $('.dc_cat_color').wpColorPicker(); });</script>";
-            echo "<style> .dc_category_color_preview { width: 20px; height: 20px; float:left; margin-right: 10px; } </style>";
-        }
 
         public static function getColor($categoryId)
         {
-            $cat_data = get_option(sprintf("%s_%s", self::$categoryColorPrefix, $categoryId));
+            $cat_data = get_option(sprintf("%s_%s", self::$categoryOptionKey, $categoryId));
 
             return (isset($cat_data['cat_color'])) ? $cat_data['cat_color'] : false;
         }

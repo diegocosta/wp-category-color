@@ -12,4 +12,6 @@
 
 	(new DiegoCosta\WP\CategoryColor('dc_cat_color'))
 		->addColorColumnOnCategoryPage()
-		->addColorAtWPTermObject();
+		->addColorInWPTermObject();
+
+	

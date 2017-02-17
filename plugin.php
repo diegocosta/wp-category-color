@@ -10,4 +10,6 @@
 
 	require_once "vendor/autoload.php";
 
-	DiegoCosta\WP\CategoryColor::init('dc_cat_color');
+	(new DiegoCosta\WP\CategoryColor('dc_cat_color'))
+		->addColorColumnOnCategoryPage()
+		->addColorAtWPTermObject();

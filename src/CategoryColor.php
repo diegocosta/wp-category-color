@@ -3,20 +3,9 @@
 
     class CategoryColor
     {
-        public static $instance = null;
-        public static $categoryOptionKey;
+        private $key;
 
-        public static function init($category_option)
-        {
-            if(self::$instance == null){
-                self::$categoryOptionKey = $category_option;
-                self::$instance = new self;
-            }
-
-            return self::$instance;
-        }
-
-        public function __construct()
+        public function __construct($key)
         {
             // Add the field to the Add New Category page
     		add_action( 'category_add_form_fields', array($this, 'input'), 10, 2 );
@@ -37,21 +26,23 @@
     		// Initialize Color Picker
     		add_action('admin_print_footer_scripts', function() {
                 echo '<script> jQuery(".dc_cat_color").wpColorPicker(); </script>';
-                echo '<style> .dc_category_color_preview { width: 20px; height: 20px; float:left; margin-right: 10px; } </style>';
             });
+        }
 
+        public function addColorColumnOnCategoryPage()
+        {
             // Add the column color in category list
             add_filter('manage_edit-category_columns', function($columns) {
-                $columns[self::$categoryOptionKey . '_column'] = 'Color';
+                $columns[$this->id('_column')] = __('Color');
                 return $columns;
             });
 
             // Show current category color in category list
             add_filter ('manage_category_custom_column', function($content, $column_name, $term_id) {
 
-                if($column_name == self::$categoryOptionKey . '_column') {
+                if($column_name == $this->id('_column')) {
 
-                    $categoryColor = self::getColor($term_id);
+                    $categoryColor = $this->getColor($term_id);
 
                     if(!$categoryColor){
                         return $content;
@@ -62,17 +53,29 @@
 
             }, 10,3);
 
+
+            // Add Style for category preview
+    		add_action('admin_print_footer_scripts', function() {
+                echo '<style> .dc_category_color_preview { width: 20px; height: 20px; float:left; margin-right: 10px; } </style>';
+            });
+
+            return $this;
+        }
+
+        public function addColorAtWPTermObject()
+        {
             // Modify WP_Term Object to shows category color
             add_filter('get_term', function($term){
-                $term->color = self::getColor($term->term_id);
+                $term->color = $this->getColor($term->term_id);
                 return $term;
             }, 10, 4);
 
+            return $this;
         }
 
         private function id($term_id)
         {
-            return self::categoryOptionKey . '_' . $term_id;
+            return $this->key . '_' . $term_id;
         }
 
         public function save($term_id)
@@ -99,23 +102,23 @@
 
     		if( is_object($term) && $term->term_id ) {
     			$term_meta = $this->id($term->term_id);
-    			$term_value = esc_attr( $term_meta['cat_color'] ) ? esc_attr( $term_meta['cat_color'] ) : '';
+    			$term_value = (isset( $term_meta['cat_color'] )) ? esc_attr( $term_meta['cat_color'] ) : '';
     		}
 
     		echo '
     			<tr class="form-field">
-    				<th scope="row" valign="top"><label for="term_meta[cat_color]">Color</label></th>
+    				<th scope="row" valign="top"><label for="term_meta[cat_color]">' . __('Color') . '</label></th>
         			<td>
             			<input type="text" name="term_meta[cat_color]" id="term_meta[cat_color]" class="dc_cat_color" value="'. $term_value .'">
-            			<p class="description">Choose one color</p>
+            			<p class="description">' . __('Select Color') . '</p>
         			</td>
     			</tr>';
     	}
 
 
-        public static function getColor($categoryId)
+        public function getColor($categoryId)
         {
-            $cat_data = get_option(sprintf("%s_%s", self::$categoryOptionKey, $categoryId));
+            $cat_data = get_option($this->id($categoryId));
 
             return (isset($cat_data['cat_color'])) ? $cat_data['cat_color'] : false;
         }
